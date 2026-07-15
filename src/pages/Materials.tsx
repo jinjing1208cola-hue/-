@@ -70,6 +70,7 @@ export default function Materials() {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
   const [previewItem, setPreviewItem] = useState<Material | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string>("")
   const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -81,6 +82,22 @@ export default function Materials() {
   const [, startTransition] = useTransition()
 
   useEffect(() => { getMaterials().then(setMaterials) }, [])
+
+  useEffect(() => {
+    if (previewItem?.type === "pdf") {
+      try {
+        const byteString = atob(previewItem.dataUrl.split(",")[1])
+        const mimeType = previewItem.dataUrl.split(",")[0].split(":")[1].split(";")[0]
+        const ab = new ArrayBuffer(byteString.length)
+        const ia = new Uint8Array(ab)
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+        const blob = new Blob([ab], { type: mimeType })
+        const url = URL.createObjectURL(blob)
+        setPdfBlobUrl(url)
+        return () => URL.revokeObjectURL(url)
+      } catch (e) { setPdfBlobUrl(previewItem.dataUrl) }
+    }
+  }, [previewItem])
 
   // Debounced search
   const handleSearch = useCallback((val: string) => {
@@ -292,7 +309,7 @@ export default function Materials() {
       </Modal>
 
       {/* Preview Modal */}
-      <Modal open={!!previewItem} onClose={() => { setPreviewItem(null); setZoomLevel(1) }} title={previewItem?.name || ''} width={960}>
+      <Modal open={!!previewItem} onClose={() => { setPreviewItem(null); setZoomLevel(1); setPdfBlobUrl("") }} title={previewItem?.name || ''} width={960}>
         {previewItem && (
           <div className="preview-content">
             {previewItem.type === 'image' && (
@@ -311,7 +328,7 @@ export default function Materials() {
               <video src={previewItem.dataUrl} controls className="preview-media" style={{ maxWidth: '100%', maxHeight: '65vh' }} />
             )}
             {previewItem.type === 'pdf' && (
-              <embed src={previewItem.dataUrl} type="application/pdf" className="preview-pdf-iframe" style={{ height: "75vh", minHeight: 500 }} />
+              <embed src={pdfBlobUrl || previewItem.dataUrl} type="application/pdf" className="preview-pdf-iframe" style={{ height: "75vh", minHeight: 500 }} />
             )}
             <div className="preview-meta">
               <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: -2, marginRight: 4 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{formatDate(previewItem.uploadedAt)}</span>
