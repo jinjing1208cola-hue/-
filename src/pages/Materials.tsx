@@ -148,8 +148,35 @@ export default function Materials() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [hasMore])
 
+
+// Compress image before storing to save memory
+function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new window.Image()
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      let { width, height } = img
+      if (width > maxWidth) { height = (height * maxWidth) / width; width = maxWidth }
+      canvas.width = width; canvas.height = height
+      const ctx = canvas.getContext("2d")!
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL("image/jpeg", quality))
+    }
+    img.src = URL.createObjectURL(file)
+    img.onerror = () => {
+      // Fallback: read as original
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(file)
+    }
+  })
+}
   const handleFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files)
+    const largeFiles = arr.filter(f => f.size > 50 * 1024 * 1024)
+    if (largeFiles.length) {
+      alert()
+    }
     if (!arr.length) return
     setUploading(true)
     setUploadProgress({ current: 0, total: arr.length })
@@ -161,7 +188,7 @@ export default function Materials() {
       else if (file.type.startsWith('video/')) type = 'video'
       else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) type = 'pdf'
       else continue
-      const dataUrl = await new Promise<string>((resolve) => {
+      const dataUrl = type === "image" ? await compressImage(file) : await new Promise<string>((resolve) => {
         const reader = new FileReader()
         reader.onload = () => resolve(reader.result as string)
         reader.readAsDataURL(file)
@@ -195,9 +222,14 @@ export default function Materials() {
   const handleBatchDelete = async () => { await deleteMaterials([...selected]); setMaterials(prev => prev.filter(m => !selected.has(m.id))); setSelected(new Set()) }
 
   const handleBatchCategory = async (newCat: string) => {
-    for (const id of selected) { const m = materials.find(x => x.id === id); if (m) { m.category = newCat; await updateMaterial(m) } }
-    setMaterials(prev => prev.map(m => selected.has(m.id) ? { ...m, category: newCat } : m))
-    setSelected(new Set()); setBatchCatOpen(false)
+    const selectedIds = [...selected]
+    for (const id of selectedIds) {
+      const m = materials.find(x => x.id === id)
+      if (m) { await updateMaterial({ ...m, category: newCat }) }
+    }
+    setMaterials(prev => prev.map(m => selectedIds.includes(m.id) ? { ...m, category: newCat } : m))
+    setSelected(new Set())
+    setBatchCatOpen(false)
   }
 
   const handleUpdateNotes = useCallback(async (id: string, notes: string) => {

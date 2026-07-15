@@ -1,12 +1,18 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout/Layout'
-import Dashboard from './pages/Dashboard'
-import Materials from './pages/Materials'
-import Issues from './pages/Issues'
-import Settings from './pages/Settings'
-import Users from './pages/Users'
 import Login from './pages/Login'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Materials = lazy(() => import('./pages/Materials'))
+const Issues = lazy(() => import('./pages/Issues'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Users = lazy(() => import('./pages/Users'))
+
+function PageLoader() {
+  return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>加载中...</div>
+}
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -27,16 +33,18 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="materials" element={<Materials />} />
-        <Route path="issues" element={<Issues />} />
-        <Route path="settings" element={<Settings />} />
-        {user.isAdmin && <Route path="users" element={<Users />} />}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Route>
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="materials" element={<Materials />} />
+          <Route path="issues" element={<Issues />} />
+          <Route path="settings" element={<Settings />} />
+          {user.isAdmin && <Route path="users" element={<Users />} />}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
+    </Suspense>
   )
 }
