@@ -1,28 +1,40 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Package, Bug, Settings2 } from 'lucide-react'
+import { LayoutDashboard, Package, Bug, Settings2, Users2 } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
 const iconProps = { size: 18, strokeWidth: 1.8 }
-
-const menuSections = [
-  {
-    title: '核心功能',
-    items: [
-      { path: '/dashboard', label: '工作台概览', icon: <LayoutDashboard {...iconProps} /> },
-      { path: '/materials', label: '物料库', icon: <Package {...iconProps} /> },
-      { path: '/issues', label: '问题追踪', icon: <Bug {...iconProps} /> },
-    ],
-  },
-  {
-    title: '系统',
-    items: [
-      { path: '/settings', label: '设置', icon: <Settings2 {...iconProps} /> },
-    ],
-  },
-]
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const sections = [
+    {
+      title: '核心功能',
+      items: [
+        { path: '/dashboard', label: '工作台概览', icon: <LayoutDashboard {...iconProps} /> },
+        { path: '/materials', label: '物料库', icon: <Package {...iconProps} /> },
+        { path: '/issues', label: '问题追踪', icon: <Bug {...iconProps} /> },
+      ],
+    },
+  ]
+
+  if (user?.isAdmin) {
+    sections.push({
+      title: '管理',
+      items: [
+        { path: '/users', label: '用户管理', icon: <Users2 {...iconProps} /> },
+      ],
+    })
+  }
+
+  sections.push({
+    title: '系统',
+    items: [
+      { path: '/settings', label: '设置', icon: <Settings2 {...iconProps} /> },
+    ],
+  })
 
   return (
     <>
@@ -38,7 +50,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           运营工作台
         </div>
         <nav className="sidebar-nav">
-          {menuSections.map(section => (
+          {sections.map(section => (
             <div key={section.title}>
               <div className="sidebar-section">{section.title}</div>
               {section.items.map(item => (

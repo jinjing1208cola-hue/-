@@ -1,6 +1,5 @@
-// IndexedDB-backed storage for materials and issues
 const DB_NAME = 'ops_workbench'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 export interface Material {
   id: string
@@ -34,6 +33,16 @@ export interface Issue {
   createdAt: string
 }
 
+export interface AppUser {
+  id: string
+  username: string
+  password: string
+  name: string
+  role: string
+  isAdmin: boolean
+  createdAt: string
+}
+
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
@@ -44,6 +53,10 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('issues')) {
         db.createObjectStore('issues', { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains('users')) {
+        const store = db.createObjectStore('users', { keyPath: 'id' })
+        store.createIndex('username', 'username', { unique: true })
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -84,54 +97,26 @@ async function remove(storeName: string, id: string): Promise<void> {
   })
 }
 
-async function clearStore(storeName: string): Promise<void> {
-  const db = await openDB()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite')
-    const store = tx.objectStore(storeName)
-    const req = store.clear()
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error)
-  })
-}
-
 // Materials
-export async function getMaterials(): Promise<Material[]> {
-  return getAll<Material>('materials')
-}
-
-export async function addMaterial(m: Material): Promise<void> {
-  return put('materials', m)
-}
-
-export async function updateMaterial(m: Material): Promise<void> {
-  return put('materials', m)
-}
-
-export async function deleteMaterial(id: string): Promise<void> {
-  return remove('materials', id)
-}
-
+export async function getMaterials(): Promise<Material[]> { return getAll<Material>('materials') }
+export async function addMaterial(m: Material): Promise<void> { return put('materials', m) }
+export async function updateMaterial(m: Material): Promise<void> { return put('materials', m) }
+export async function deleteMaterial(id: string): Promise<void> { return remove('materials', id) }
 export async function deleteMaterials(ids: string[]): Promise<void> {
   for (const id of ids) await remove('materials', id)
 }
 
 // Issues
-export async function getIssues(): Promise<Issue[]> {
-  return getAll<Issue>('issues')
-}
+export async function getIssues(): Promise<Issue[]> { return getAll<Issue>('issues') }
+export async function addIssue(issue: Issue): Promise<void> { return put('issues', issue) }
+export async function updateIssue(issue: Issue): Promise<void> { return put('issues', issue) }
+export async function deleteIssue(id: string): Promise<void> { return remove('issues', id) }
 
-export async function addIssue(issue: Issue): Promise<void> {
-  return put('issues', issue)
-}
-
-export async function updateIssue(issue: Issue): Promise<void> {
-  return put('issues', issue)
-}
-
-export async function deleteIssue(id: string): Promise<void> {
-  return remove('issues', id)
-}
+// Users
+export async function getUsers(): Promise<AppUser[]> { return getAll<AppUser>('users') }
+export async function addAppUser(u: AppUser): Promise<void> { return put('users', u) }
+export async function updateAppUser(u: AppUser): Promise<void> { return put('users', u) }
+export async function deleteAppUser(id: string): Promise<void> { return remove('users', id) }
 
 // Helpers
 export function generateId(): string {
